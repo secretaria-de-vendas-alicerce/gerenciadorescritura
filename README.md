@@ -9,18 +9,19 @@ Google logadas). **Este é o link que a equipe deve usar** — nunca a `/exec` d
 
 ## Publicar (GitHub Pages — repo dedicado)
 
+Repo: **`secretaria-de-vendas-alicerce/gerenciadorescritura`** (público). Publicado via `gh`:
+
 ```bash
 # de dentro desta pasta wrapper/
-git init
-git add index.html .nojekyll README.md
-git commit -m "Wrapper Gerenciador de Escrituras"
-git branch -M main
-git remote add origin https://github.com/<user>/alicerce-escrituras.git
-git push -u origin main
+gh repo create secretaria-de-vendas-alicerce/gerenciadorescritura \
+  --public --source=. --remote=origin --push
+# habilitar Pages (branch main, root):
+gh api -X POST repos/secretaria-de-vendas-alicerce/gerenciadorescritura/pages \
+  -f "source[branch]=main" -f "source[path]=/"
 ```
 
-Depois: **Settings → Pages → Source = branch `main`, pasta `/ (root)`**. Repo precisa ser
-**público** (Pages grátis). URL final: `https://<user>.github.io/alicerce-escrituras/`.
+URL final: **`https://secretaria-de-vendas-alicerce.github.io/gerenciadorescritura/`** — é o link que a
+equipe passa a usar (nunca a `/exec` direta). Pages leva ~1 min pra subir na 1ª vez.
 
 ## Pré-requisitos no app (já feitos)
 
