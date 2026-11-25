@@ -95,5 +95,49 @@
       }
     }, 12000);
   </script>
+  <script>
+    /* PONTE DO CÓDIGO (ORD-PERF-ESCRITURAS-002, O1). O app baixa o código de todas as telas enquanto a pessoa digita a senha
+       e guarda AQUI: o localStorage de dentro do iframe credentialless some ao recarregar, o desta página fica. Só o código,
+       nunca a sessão. O app roda o guardado só se o sha256 for o do build dele: este storage é de todo o github.io da conta. */
+    (function () {
+      var CODIGO = 'esc-codigo';
+      var app = document.getElementById('app');
+      var TIPOS = { 'esc-codigo-get': 1, 'esc-codigo-set': 1 };
+      /* o formato: tipo conhecido; a chave curta e sem símbolo; o valor, quando vem, é texto */
+      function noFormato(d) {
+        if (!d || typeof d !== 'object' || !TIPOS[d.tipo]) return false;
+        if (d.value !== undefined && typeof d.value !== 'string') return false;
+        return typeof d.chave === 'string' && /^[\w.-]{1,80}$/.test(d.chave);
+      }
+      /* A página do app roda no host de script DESTE projeto: n-<o id dele>-0lu-script.googleusercontent.com, o mesmo nas 3
+         aberturas medidas pelo wrapper em 23/11 (@44). O número antes do "lu" fica aberto, como no Análises v3: não está medido se
+         ele muda. Projeto novo = host novo: o app baixa o código a cada entrada (falha segura) até este id ser trocado aqui */
+      function doGoogle(origem) {
+        return /^https:\/\/n-uvbhw3n6mxhpqred2z64t4h7sqg5fhtazmluk2i-\d+lu-script\.googleusercontent\.com$/.test(origem);
+      }
+      /* e mora 2 frames abaixo do iframe: /exec -> painel -> página (medido em 23/11). Se o Google mudar isso, o app baixa o código */
+      function doIframe(w) {
+        var p = w && w.parent;
+        return !!p && p.parent === app.contentWindow;
+      }
+      window.addEventListener('message', function (ev) {
+        if (!doIframe(ev.source) || !doGoogle(ev.origin) || !noFormato(ev.data)) return;
+        var d = ev.data;
+        try {
+          if (d.tipo === 'esc-codigo-get') {
+            var g = JSON.parse(localStorage.getItem(CODIGO) || 'null');
+            ev.source.postMessage({ tipo: 'esc-codigo-value', value: g && g.chave === d.chave ? g.value : '' }, ev.origin);
+          } else if (typeof d.value === 'string' && d.value) {
+            localStorage.setItem(CODIGO, JSON.stringify({ chave: d.chave, value: d.value }));
+          } else {
+            localStorage.removeItem(CODIGO);
+          }
+        } catch (e) {
+          /* sem armazenamento (aba anônima, bloqueio) ou cheio: o app baixa o código */
+          if (d.tipo === 'esc-codigo-get') ev.source.postMessage({ tipo: 'esc-codigo-value', value: '' }, ev.origin);
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
