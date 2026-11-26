@@ -30,3 +30,18 @@ equipe passa a usar (nunca a `/exec` direta). Pages leva ~1 min pra subir na 1ª
 
 Se a `/exec` de produção mudar (novo `deploymentId`), atualizar o `src` do iframe **e** o `href`
 de fallback em `index.html`.
+
+## As pontes (postMessage, ORD-PERF-ESCRITURAS-002)
+
+O `localStorage` de dentro do iframe credentialless some ao recarregar; o desta página fica. Por
+isso o app guarda aqui duas coisas, e só responde à página do app (host de script deste projeto,
+2 frames abaixo do iframe):
+
+- `esc-codigo-get/set` (O1): o código das telas, gzip+base64. O app só o roda se o sha256 for o
+  do build dele.
+- `esc-sessao-get/set` (O3): o token da sessão (só UUID; vazio apaga). O app só mostra a tela
+  depois de o servidor conferir o token (`retomar`); o Sair o apaga daqui e do servidor. Este
+  storage é de todo o `github.io` da conta (aceito como no Imóveis, CONSELHO-015).
+
+**Ordem de publicação:** este wrapper sobe ANTES do app que usa a ponte nova. Com o wrapper
+velho, o app pede a senha (falha segura).

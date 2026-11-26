@@ -97,16 +97,23 @@
   </script>
   <script>
     /* PONTE DO CÓDIGO (ORD-PERF-ESCRITURAS-002, O1). O app baixa o código de todas as telas enquanto a pessoa digita a senha
-       e guarda AQUI: o localStorage de dentro do iframe credentialless some ao recarregar, o desta página fica. Só o código,
-       nunca a sessão. O app roda o guardado só se o sha256 for o do build dele: este storage é de todo o github.io da conta. */
+       e guarda AQUI: o localStorage de dentro do iframe credentialless some ao recarregar, o desta página fica. O app roda o
+       guardado só se o sha256 for o do build dele: este storage é de todo o github.io da conta.
+       PONTE DA SESSÃO (O3, A8; molde: o L-1 do Imóveis, CONSELHO-015): o token da sessão também mora aqui, para recarregar
+       não pedir a senha. O app só mostra a tela depois de o servidor conferir o token (`retomar`); o Sair o apaga daqui e do
+       servidor. Sem esta página, ou com outro host, o app pede a senha (falha segura). */
     (function () {
       var CODIGO = 'esc-codigo';
+      var SESSAO = 'esc-sessao';
       var app = document.getElementById('app');
-      var TIPOS = { 'esc-codigo-get': 1, 'esc-codigo-set': 1 };
-      /* o formato: tipo conhecido; a chave curta e sem símbolo; o valor, quando vem, é texto */
+      var TIPOS = { 'esc-codigo-get': 1, 'esc-codigo-set': 1, 'esc-sessao-get': 1, 'esc-sessao-set': 1 };
+      /* o formato: tipo conhecido; o valor, quando vem, é texto. O código leva a chave curta e sem símbolo; o token gravado
+         é o uuid do servidor, ou vazio (apagar) */
       function noFormato(d) {
         if (!d || typeof d !== 'object' || !TIPOS[d.tipo]) return false;
         if (d.value !== undefined && typeof d.value !== 'string') return false;
+        if (d.tipo === 'esc-sessao-get') return true;
+        if (d.tipo === 'esc-sessao-set') return !d.value || /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(d.value);
         return typeof d.chave === 'string' && /^[\w.-]{1,80}$/.test(d.chave);
       }
       /* A página do app roda no host de script DESTE projeto: n-<o id dele>-0lu-script.googleusercontent.com, o mesmo nas 3
@@ -118,13 +125,17 @@
       /* e mora 2 frames abaixo do iframe: /exec -> painel -> página (medido em 23/11). Se o Google mudar isso, o app baixa o código */
       function doIframe(w) {
         var p = w && w.parent;
-        return !!p && p.parent === app.contentWindow;
+        return !!p && p !== w && p.parent === app.contentWindow;
       }
       window.addEventListener('message', function (ev) {
         if (!doIframe(ev.source) || !doGoogle(ev.origin) || !noFormato(ev.data)) return;
         var d = ev.data;
         try {
-          if (d.tipo === 'esc-codigo-get') {
+          if (d.tipo === 'esc-sessao-get') {
+            ev.source.postMessage({ tipo: 'esc-sessao-value', value: localStorage.getItem(SESSAO) || '' }, ev.origin);
+          } else if (d.tipo === 'esc-sessao-set') {
+            if (d.value) localStorage.setItem(SESSAO, d.value); else localStorage.removeItem(SESSAO);
+          } else if (d.tipo === 'esc-codigo-get') {
             var g = JSON.parse(localStorage.getItem(CODIGO) || 'null');
             ev.source.postMessage({ tipo: 'esc-codigo-value', value: g && g.chave === d.chave ? g.value : '' }, ev.origin);
           } else if (typeof d.value === 'string' && d.value) {
@@ -133,8 +144,9 @@
             localStorage.removeItem(CODIGO);
           }
         } catch (e) {
-          /* sem armazenamento (aba anônima, bloqueio) ou cheio: o app baixa o código */
+          /* sem armazenamento (aba anônima, bloqueio) ou cheio: o app baixa o código e pede a senha */
           if (d.tipo === 'esc-codigo-get') ev.source.postMessage({ tipo: 'esc-codigo-value', value: '' }, ev.origin);
+          if (d.tipo === 'esc-sessao-get') ev.source.postMessage({ tipo: 'esc-sessao-value', value: '' }, ev.origin);
         }
       });
     })();
